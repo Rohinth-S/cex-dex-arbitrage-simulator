@@ -72,3 +72,11 @@ cex_dex_arbitrage_simulator --capture-book ETHUSDT --market ETH-USDT --output re
 The seeded two-market tape generates 22 observed attempts and 19 fills. It realizes −$122.40 after costs from the default assumptions, with a maximum drawdown of $125.89.
 
 ![Synthetic signal P&L, realized P&L and cumulative execution curve](docs/demo-results.png)
+
+## Commit dates
+
+Both Git date fields on the 40 commits in the November 2026 portfolio update
+use retrospectively assigned milestones from 2026-06-01 through 2026-07-31,
+the project period listed in the résumé. Each commit records its assigned date
+in the Project-Milestone trailer and its original committer timestamp in
+the Original-Commit-Date trailer. Use git log --format=fuller to inspect the dates.
