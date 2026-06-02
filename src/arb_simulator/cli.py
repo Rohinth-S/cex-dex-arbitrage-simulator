@@ -5,6 +5,8 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+
+from . import __version__
 import time
 
 import duckdb
@@ -49,6 +51,7 @@ def main() -> None:
     parser.add_argument("--write-tape", type=Path, help="export the exact replay input")
     parser.add_argument("--config", type=Path, help="execution assumptions as JSON")
     parser.add_argument("--seed", type=int, default=17)
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = parser.parse_args()
     try:
         if args.capture_book:
