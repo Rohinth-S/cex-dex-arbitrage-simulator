@@ -1,2 +1,0 @@
-[console_scripts]
-cex_dex_arbitrage_simulator = arb_simulator.cli:main
