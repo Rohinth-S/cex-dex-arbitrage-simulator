@@ -13,6 +13,9 @@ flowchart LR
  R --> M[PNL, fill rate, drawdown]
 ```
 
+## Structural overview
+`src/arb_simulator/sim.py` contains quote joining, execution-cost modeling, and aggregation; `cli.py` runs a replay; `tests/` verifies failure and metric behavior.
+
 ## Workflow
 1. Create synchronized CEX/DEX quotes.
 2. Reject opportunities whose gross edge cannot cover costs.
