@@ -9,6 +9,7 @@ from pathlib import Path
 from .artifacts import write_text_atomic
 
 from . import __version__
+from .artifacts import require_distinct_paths
 import time
 
 import duckdb
@@ -54,7 +55,15 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = parser.parse_args()
+
     try:
+        require_distinct_paths(
+            input_file=args.input,
+            configuration=args.config,
+            report=args.output,
+            ledger=args.ledger,
+            tape=args.write_tape,
+        )
         if args.capture_book:
             if args.ledger or args.config or args.write_tape:
                 parser.error("replay options require a tape")
