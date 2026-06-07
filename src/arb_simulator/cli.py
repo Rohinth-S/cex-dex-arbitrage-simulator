@@ -88,6 +88,7 @@ def main() -> None:
                 _write_ledger(args.ledger, rows)
             _write(args.write_tape, tape.model_dump_json(indent=2) + "\n")
 
+        result["producer"] = {"name": "cex-dex-arbitrage-simulator", "version": __version__, "format_version": 1}
         payload = json.dumps(result, indent=2, allow_nan=False) + "\n"
         _write(args.output, payload)
     except (OSError, ValueError, RuntimeError) as exc:
