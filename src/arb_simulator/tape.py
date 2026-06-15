@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 Positive = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 Nonnegative = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 Time = Annotated[int, Field(ge=0)]
-Market = Annotated[str, Field(min_length=1, max_length=80)]
+Market = Annotated[str, Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:/-]*$")]
 
 
 class Record(BaseModel):
