@@ -1,6 +1,7 @@
 """A normalized, replayable market-data tape."""
 
 from collections import defaultdict
+from math import isfinite
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -39,6 +40,8 @@ class DexQuote(Record):
         return self
 
     def price(self, buy: bool, size: float) -> float:
+        if not isfinite(size) or size <= 0:
+            raise ValueError("DEX pricing requires a finite positive size")
         if size > self.max_qty:
             raise ValueError("insufficient DEX depth")
         impact = size * self.impact_bps_per_unit / 10_000
