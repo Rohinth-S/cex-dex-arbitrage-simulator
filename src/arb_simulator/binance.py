@@ -65,10 +65,17 @@ def normalize_order_book(payload: dict, depth: int | None = None) -> NormalizedO
         for level in raw:
             if not isinstance(level, (list, tuple)) or len(level) != 2:
                 raise ValueError(f"invalid {side} level")
-            price, quantity = float(level[0]), float(level[1])
+            if any(isinstance(value, bool) for value in level):
+                raise ValueError("book levels require numeric prices and quantities")
+            try:
+                price, quantity = float(level[0]), float(level[1])
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise ValueError(f"invalid {side} level") from exc
             if not all(isfinite(value) and value > 0 for value in (price, quantity)):
                 raise ValueError("book prices and quantities must be finite and positive")
             aggregated[price] += quantity
+            if not isfinite(aggregated[price]):
+                raise ValueError(f"{side} quantity overflow")
         values = sorted(aggregated.items(), key=lambda item: item[0], reverse=side == "bids")
         if depth is not None:
             values = values[:depth]
