@@ -42,9 +42,9 @@ class NormalizedOrderBook:
         for level in levels:
             take = min(remaining, level.quantity)
             notional += take * level.price
-            remaining -= take
-            if remaining <= 1e-12:
+            if take == remaining:
                 return notional / quantity
+            remaining -= take
         raise ValueError("insufficient order-book depth")
 
 
