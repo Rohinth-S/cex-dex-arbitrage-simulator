@@ -21,7 +21,7 @@ class Record(BaseModel):
 class BookSnapshot(Record):
     bids: list[tuple[Positive, Positive]] = Field(min_length=1)
     asks: list[tuple[Positive, Positive]] = Field(min_length=1)
-    update_id: int | None = None
+    update_id: Time | None = None
 
 
 class DexQuote(Record):

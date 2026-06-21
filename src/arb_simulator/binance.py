@@ -89,7 +89,12 @@ def normalize_order_book(payload: dict, depth: int | None = None) -> NormalizedO
     if bids[0].price >= asks[0].price:
         raise ValueError("crossed order book")
     update_id = payload.get("lastUpdateId")
-    return NormalizedOrderBook(bids, asks, int(update_id) if update_id is not None else None)
+    if update_id is not None:
+        text = str(update_id)
+        if not text.isascii() or not text.isdigit():
+            raise ValueError("lastUpdateId must be a nonnegative integer")
+        update_id = int(text)
+    return NormalizedOrderBook(bids, asks, update_id)
 
 @dataclass
 class BinanceTestnetClient:
