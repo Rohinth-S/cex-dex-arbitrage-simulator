@@ -134,5 +134,7 @@ def replay(n: int = 200, seed: int = 5) -> list[dict]:
 def metrics(rows: list[dict]) -> dict:
     if not rows:
         return {"net_pnl": 0.0, "fill_rate": 0.0, "sharpe_like": 0.0, "max_drawdown": 0.0, "trades": 0}
-    pnl = np.array([r["net_pnl"] for r in rows], dtype=float); curve = np.cumsum(pnl); drawdown = np.maximum.accumulate(curve) - curve
+    pnl = np.array([r["net_pnl"] for r in rows], dtype=float)
+    curve = np.r_[0., pnl.cumsum()]
+    drawdown = np.maximum.accumulate(curve) - curve
     return {"net_pnl": float(pnl.sum()), "fill_rate": float(np.mean([r["fill_rate"] for r in rows])), "sharpe_like": float(pnl.mean() / (pnl.std() + 1e-9) * np.sqrt(len(pnl))), "max_drawdown": float(drawdown.max()), "trades": len(rows)}
