@@ -72,6 +72,8 @@ def _run_market(
     through = min(books[-1].time_ms, dex_quotes[-1].time_ms) if observed_through_ms is None else observed_through_ms
     signals = sorted({book.time_ms for book in books} | {quote.time_ms for quote in dex_quotes})
     next_free = -1
+    cex_age = cfg.cex_max_age_ms or cfg.max_quote_age_ms
+    dex_age = cfg.dex_max_age_ms or cfg.max_quote_age_ms
     rows = []
     for signal in signals:
         order = {
@@ -84,8 +86,8 @@ def _run_market(
         rows.append(order)
         if signal <= next_free:
             continue
-        book = _asof(books, signal, cfg.max_quote_age_ms)
-        dex = _asof(dex_quotes, signal, cfg.max_quote_age_ms)
+        book = _asof(books, signal, cex_age)
+        dex = _asof(dex_quotes, signal, dex_age)
         if book is None or dex is None:
             order["status"] = "stale_signal"
             continue
@@ -113,8 +115,8 @@ def _run_market(
             continue
         next_free = max(cex_at, dex_at)
         order["event_time_ms"] = next_free
-        exec_book = _asof(books, cex_at, cfg.max_quote_age_ms)
-        exec_dex = _asof(dex_quotes, dex_at, cfg.max_quote_age_ms)
+        exec_book = _asof(books, cex_at, cex_age)
+        exec_dex = _asof(dex_quotes, dex_at, dex_age)
         order["execution_book_ms"] = exec_book.time_ms if exec_book else None
         order["execution_dex_ms"] = exec_dex.time_ms if exec_dex else None
 

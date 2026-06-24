@@ -88,6 +88,8 @@ class ReplayConfig(BaseModel):
     cex_latency_ms: Time = 50
     dex_latency_ms: Time = 160
     max_quote_age_ms: Annotated[int, Field(gt=0)] = 1_000
+    cex_max_age_ms: Annotated[int, Field(gt=0)] | None = None
+    dex_max_age_ms: Annotated[int, Field(gt=0)] | None = None
     cex_fee_bps: Nonnegative = 4
     dex_fee_bps: Nonnegative = 5
     hedge_bps: Nonnegative = 2
