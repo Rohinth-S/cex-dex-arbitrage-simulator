@@ -80,6 +80,8 @@ def _run_market(
             "market": market, "decision_time_ms": signal, "event_time_ms": signal, "status": "busy",
             "direction": None, "size": cfg.size, "signal_book_ms": None, "signal_dex_ms": None,
             "execution_book_ms": None, "execution_dex_ms": None, "expected_pnl_usd": None,
+            "scheduled_cex_ms": None, "scheduled_dex_ms": None,
+            "execution_cex_quote_age_ms": None, "execution_dex_quote_age_ms": None,
             "gross_pnl_usd": 0.0, "fees_usd": 0.0, "hedge_usd": 0.0, "gas_usd": 0.0,
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
         }
@@ -110,6 +112,7 @@ def _run_market(
             continue
 
         cex_at, dex_at = (signal + cfg.cex_latency_ms, signal + cfg.dex_latency_ms)
+        order.update({"scheduled_cex_ms": cex_at, "scheduled_dex_ms": dex_at})
         if max(cex_at, dex_at) > through:
             order["status"] = "censored"
             continue
@@ -119,6 +122,8 @@ def _run_market(
         exec_dex = _asof(dex_quotes, dex_at, dex_age)
         order["execution_book_ms"] = exec_book.time_ms if exec_book else None
         order["execution_dex_ms"] = exec_dex.time_ms if exec_dex else None
+        order["execution_cex_quote_age_ms"] = cex_at - exec_book.time_ms if exec_book else None
+        order["execution_dex_quote_age_ms"] = dex_at - exec_dex.time_ms if exec_dex else None
 
         settled = None
         status = "failed_stale"
