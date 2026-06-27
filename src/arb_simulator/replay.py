@@ -86,7 +86,7 @@ def _run_market(
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
         }
         rows.append(order)
-        if signal <= next_free:
+        if signal < next_free:
             continue
         book = _asof(books, signal, cex_age)
         dex = _asof(dex_quotes, signal, dex_age)
