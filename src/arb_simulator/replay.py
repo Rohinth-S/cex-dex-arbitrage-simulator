@@ -25,7 +25,8 @@ class FillCost:
     buy_price: float
     sell_price: float
     gross: float
-    fees: float
+    cex_fee: float
+    dex_fee: float
     hedge: float
     gas: float
     debit: float
@@ -33,6 +34,10 @@ class FillCost:
     @property
     def net(self) -> float:
         return self.gross - self.fees - self.hedge - self.gas
+
+    @property
+    def fees(self) -> float:
+        return self.cex_fee + self.dex_fee
 
 
 class TimedQuote(Protocol):
@@ -58,7 +63,7 @@ def _quote(book: Book, dex: DexQuote, direction: str, cfg: ReplayConfig) -> Fill
     hedge = cex_price * cfg.size * cfg.hedge_bps / 10_000
     buy_fee = dex_fee if buy_on_dex else cex_fee
     return FillCost(
-        buy, sell, (sell - buy) * cfg.size, cex_fee + dex_fee, hedge, dex.gas_usd,
+        buy, sell, (sell - buy) * cfg.size, cex_fee, dex_fee, hedge, dex.gas_usd,
         buy * cfg.size + buy_fee + dex.gas_usd + hedge,
     )
 
@@ -83,6 +88,7 @@ def _run_market(
             "scheduled_cex_ms": None, "scheduled_dex_ms": None,
             "execution_cex_quote_age_ms": None, "execution_dex_quote_age_ms": None,
             "gross_pnl_usd": 0.0, "fees_usd": 0.0, "hedge_usd": 0.0, "gas_usd": 0.0,
+            "cex_fees_usd": 0.0, "dex_fees_usd": 0.0,
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
         }
         rows.append(order)
@@ -143,6 +149,7 @@ def _run_market(
             continue
         order.update({
             "status": "filled", "gross_pnl_usd": settled.gross, "fees_usd": settled.fees,
+            "cex_fees_usd": settled.cex_fee, "dex_fees_usd": settled.dex_fee,
             "hedge_usd": settled.hedge, "gas_usd": settled.gas, "net_pnl_usd": settled.net,
             "edge_decay_usd": expected - settled.net, "buy_price": settled.buy_price, "sell_price": settled.sell_price,
         })
@@ -180,7 +187,7 @@ def _summary(ledger: list[dict], capital: float) -> dict:
         "trade_sharpe_like": float(realized.mean() / std * np.sqrt(count)) if std else None,
         "mean_edge_decay_usd": float(np.mean([row["edge_decay_usd"] for row in attempts])) if count else None,
         **{column: sum(row[column] for row in attempts) for column in (
-            "gross_pnl_usd", "fees_usd", "hedge_usd", "gas_usd",
+            "gross_pnl_usd", "fees_usd", "cex_fees_usd", "dex_fees_usd", "hedge_usd", "gas_usd",
         )},
     }
 
