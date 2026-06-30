@@ -89,6 +89,7 @@ def _run_market(
             "execution_cex_quote_age_ms": None, "execution_dex_quote_age_ms": None,
             "gross_pnl_usd": 0.0, "fees_usd": 0.0, "hedge_usd": 0.0, "gas_usd": 0.0,
             "cex_fees_usd": 0.0, "dex_fees_usd": 0.0,
+            "expected_gross_pnl_usd": None, "expected_cost_usd": None,
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
         }
         rows.append(order)
@@ -107,12 +108,16 @@ def _run_market(
             except ValueError:
                 continue
             if fill.debit <= budget:
-                choices.append((fill.net, direction))
+                choices.append((direction, fill))
         if not choices:
             order["status"] = "signal_depth_or_capital"
             continue
-        expected, direction = max(choices)
-        order.update({"expected_pnl_usd": expected, "direction": direction})
+        direction, forecast = max(choices, key=lambda choice: (choice[1].net, choice[0]))
+        expected = forecast.net
+        order.update({
+            "expected_pnl_usd": expected, "direction": direction,
+            "expected_gross_pnl_usd": forecast.gross, "expected_cost_usd": forecast.gross - expected,
+        })
         if expected <= cfg.min_expected_pnl_usd:
             order["status"] = "below_edge"
             continue
