@@ -90,6 +90,7 @@ def _run_market(
             "gross_pnl_usd": 0.0, "fees_usd": 0.0, "hedge_usd": 0.0, "gas_usd": 0.0,
             "cex_fees_usd": 0.0, "dex_fees_usd": 0.0,
             "expected_gross_pnl_usd": None, "expected_cost_usd": None,
+            "gas_mark_source": None,
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
         }
         rows.append(order)
@@ -150,11 +151,15 @@ def _run_market(
                     status = "failed_capital"
         if settled is None:
             gas = (exec_dex or dex).gas_usd * cfg.revert_cost_fraction
-            order.update({"status": status, "gas_usd": gas, "net_pnl_usd": -gas, "edge_decay_usd": expected + gas})
+            order.update({
+                "status": status, "gas_usd": gas, "net_pnl_usd": -gas, "edge_decay_usd": expected + gas,
+                "gas_mark_source": "execution_dex" if exec_dex else "signal_dex",
+            })
             continue
         order.update({
             "status": "filled", "gross_pnl_usd": settled.gross, "fees_usd": settled.fees,
             "cex_fees_usd": settled.cex_fee, "dex_fees_usd": settled.dex_fee,
+            "gas_mark_source": "execution_dex",
             "hedge_usd": settled.hedge, "gas_usd": settled.gas, "net_pnl_usd": settled.net,
             "edge_decay_usd": expected - settled.net, "buy_price": settled.buy_price, "sell_price": settled.sell_price,
         })
