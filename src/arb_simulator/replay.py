@@ -91,6 +91,7 @@ def _run_market(
             "cex_fees_usd": 0.0, "dex_fees_usd": 0.0,
             "expected_gross_pnl_usd": None, "expected_cost_usd": None,
             "gas_mark_source": None,
+            "capital_budget_usd": budget, "planned_capital_usd": None, "required_capital_at_execution_usd": None,
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
         }
         rows.append(order)
@@ -117,6 +118,7 @@ def _run_market(
         expected = forecast.net
         order.update({
             "expected_pnl_usd": expected, "direction": direction,
+            "planned_capital_usd": forecast.debit,
             "expected_gross_pnl_usd": forecast.gross, "expected_cost_usd": forecast.gross - expected,
         })
         if expected <= cfg.min_expected_pnl_usd:
@@ -145,6 +147,7 @@ def _run_market(
             except ValueError:
                 status = "failed_depth"
             else:
+                order["required_capital_at_execution_usd"] = fill.debit
                 if fill.debit <= budget:
                     settled = fill
                 else:
