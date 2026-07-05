@@ -92,6 +92,7 @@ def _run_market(
             "expected_gross_pnl_usd": None, "expected_cost_usd": None,
             "gas_mark_source": None,
             "capital_budget_usd": budget, "planned_capital_usd": None, "required_capital_at_execution_usd": None,
+            "depth_rejections": 0, "capital_rejections": 0,
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
         }
         rows.append(order)
@@ -108,9 +109,12 @@ def _run_market(
             try:
                 fill = _quote(book, dex, direction, cfg)
             except ValueError:
+                order["depth_rejections"] += 1
                 continue
             if fill.debit <= budget:
                 choices.append((direction, fill))
+            else:
+                order["capital_rejections"] += 1
         if not choices:
             order["status"] = "signal_depth_or_capital"
             continue
