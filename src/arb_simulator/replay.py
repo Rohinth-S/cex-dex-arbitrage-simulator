@@ -94,6 +94,7 @@ def _run_market(
             "capital_budget_usd": budget, "planned_capital_usd": None, "required_capital_at_execution_usd": None,
             "depth_rejections": 0, "capital_rejections": 0,
             "net_pnl_usd": 0.0, "edge_decay_usd": None, "buy_price": None, "sell_price": None,
+            "spread_decay_usd": None, "cost_drift_usd": None,
         }
         rows.append(order)
         if signal < next_free:
@@ -167,6 +168,8 @@ def _run_market(
             "status": "filled", "gross_pnl_usd": settled.gross, "fees_usd": settled.fees,
             "cex_fees_usd": settled.cex_fee, "dex_fees_usd": settled.dex_fee,
             "gas_mark_source": "execution_dex",
+            "spread_decay_usd": forecast.gross - settled.gross,
+            "cost_drift_usd": settled.gross - settled.net - (forecast.gross - expected),
             "hedge_usd": settled.hedge, "gas_usd": settled.gas, "net_pnl_usd": settled.net,
             "edge_decay_usd": expected - settled.net, "buy_price": settled.buy_price, "sell_price": settled.sell_price,
         })
