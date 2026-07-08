@@ -219,9 +219,13 @@ def summarize_tape(tape: Tape, ledger: list[dict], config: ReplayConfig) -> dict
         groups[row["market"]].append(row)
     for trade in tape.cex_trades:
         trades[trade.market].append(trade.price * trade.quantity)
-    budget = config.capital_usd / len(groups)
+    budget = config.capital_usd / max(1, len(groups))
     return {
         "config": config.model_dump(), "portfolio": _summary(ledger, config.capital_usd),
+        "by_direction": {
+            name: _summary([row for row in ledger if row["direction"] == name], config.capital_usd)
+            for name in (DEX_BUY, CEX_BUY)
+        },
         "by_market": {
             market: {
                 **_summary(rows, budget), "cex_trade_count": len(trades[market]),
