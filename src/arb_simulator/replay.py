@@ -222,6 +222,12 @@ def summarize_tape(tape: Tape, ledger: list[dict], config: ReplayConfig) -> dict
     budget = config.capital_usd / max(1, len(groups))
     return {
         "config": config.model_dump(), "portfolio": _summary(ledger, config.capital_usd),
+        "coverage": {
+            "cex_snapshots": len(tape.books), "dex_quotes": len(tape.dex_quotes),
+            "earliest_decision_ms": min((row["decision_time_ms"] for row in ledger), default=None),
+            "latest_event_ms": max((row["event_time_ms"] for row in ledger), default=None),
+            "declared_observation_end_ms": tape.observed_through_ms,
+        },
         "by_direction": {
             name: _summary([row for row in ledger if row["direction"] == name], config.capital_usd)
             for name in (DEX_BUY, CEX_BUY)
