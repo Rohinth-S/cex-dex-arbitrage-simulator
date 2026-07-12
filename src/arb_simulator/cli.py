@@ -17,6 +17,7 @@ import pandas as pd
 
 from .binance import BinanceTestnetClient, normalize_order_book
 from .fixtures import demo_tape
+from .sensitivity import compare_dex_latency
 from .replay import replay_tape, summarize_tape
 from .tape import BookSnapshot, ReplayConfig, Tape
 
@@ -52,6 +53,7 @@ def main() -> None:
     parser.add_argument("--ledger", type=Path, help="export decision and fill rows as CSV or Parquet")
     parser.add_argument("--write-tape", type=Path, help="export the exact replay input")
     parser.add_argument("--config", type=Path, help="execution assumptions as JSON")
+    parser.add_argument("--latency-study", type=int, nargs="+", metavar="MS")
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = parser.parse_args()
@@ -65,7 +67,7 @@ def main() -> None:
             tape=args.write_tape,
         )
         if args.capture_book:
-            if args.ledger or args.config or args.write_tape:
+            if args.ledger or args.config or args.write_tape or args.latency_study:
                 parser.error("replay options require a tape")
             snapshot = normalize_order_book(BinanceTestnetClient().depth(args.capture_book))
             result = BookSnapshot(
@@ -84,6 +86,8 @@ def main() -> None:
             config = ReplayConfig.model_validate_json(args.config.read_bytes()) if args.config else ReplayConfig()
             rows = replay_tape(tape, config)
             result = {**summarize_tape(tape, rows, config), "source": source_info}
+            if args.latency_study:
+                result["latency_study"] = compare_dex_latency(tape, config, args.latency_study)
             if args.ledger:
                 _write_ledger(args.ledger, rows)
             _write(args.write_tape, tape.model_dump_json(indent=2) + "\n")
