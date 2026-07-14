@@ -83,7 +83,10 @@ def main() -> None:
             else:
                 tape = demo_tape(args.seed)
                 source_info = {"kind": "synthetic", "seed": args.seed}
-            config = ReplayConfig.model_validate_json(args.config.read_bytes()) if args.config else ReplayConfig()
+            config_raw = args.config.read_bytes() if args.config else None
+            config = ReplayConfig.model_validate_json(config_raw) if config_raw is not None else ReplayConfig()
+            if config_raw is not None:
+                source_info["configuration_sha256"] = hashlib.sha256(config_raw).hexdigest()
             rows = replay_tape(tape, config)
             result = {**summarize_tape(tape, rows, config), "source": source_info}
             if args.latency_study:
