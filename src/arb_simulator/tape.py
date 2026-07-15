@@ -22,6 +22,7 @@ class BookSnapshot(Record):
     bids: list[tuple[Positive, Positive]] = Field(min_length=1)
     asks: list[tuple[Positive, Positive]] = Field(min_length=1)
     update_id: Time | None = None
+    capture_elapsed_ms: Time | None = None
 
 
 class DexQuote(Record):

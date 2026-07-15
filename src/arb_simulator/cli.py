@@ -69,9 +69,12 @@ def main() -> None:
         if args.capture_book:
             if args.ledger or args.config or args.write_tape or args.latency_study:
                 parser.error("replay options require a tape")
+            request_started = time.monotonic_ns()
             snapshot = normalize_order_book(BinanceTestnetClient().depth(args.capture_book))
+            duration_ms = (time.monotonic_ns() - request_started) // 1_000_000
             result = BookSnapshot(
                 market=args.market or args.capture_book.upper(), time_ms=time.time_ns() // 1_000_000,
+                capture_elapsed_ms=duration_ms,
                 bids=[(row.price, row.quantity) for row in snapshot.bids],
                 asks=[(row.price, row.quantity) for row in snapshot.asks], update_id=snapshot.last_update_id,
             ).model_dump()
@@ -95,7 +98,8 @@ def main() -> None:
                 _write_ledger(args.ledger, rows)
             _write(args.write_tape, tape.model_dump_json(indent=2) + "\n")
 
-        result["producer"] = {"name": "cex-dex-arbitrage-simulator", "version": __version__, "format_version": 1}
+        if not args.capture_book:
+            result["producer"] = {"name": "cex-dex-arbitrage-simulator", "version": __version__, "format_version": 1}
         payload = json.dumps(result, indent=2, allow_nan=False) + "\n"
         _write(args.output, payload)
     except (OSError, ValueError, RuntimeError) as exc:
