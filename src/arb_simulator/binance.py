@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from collections import defaultdict
 from math import isfinite
@@ -113,12 +114,15 @@ class BinanceTestnetClient:
             headers["X-MBX-APIKEY"] = self.api_key
         with urlopen(Request(url, headers=headers), timeout=self.timeout) as response:
             payload = json.loads(response.read())
-        if isinstance(payload, dict) and payload.get("code", 0) < 0:
-            raise RuntimeError(f"Binance testnet request failed: {payload}")
+        if not isinstance(payload, dict):
+            raise RuntimeError("Binance testnet returned an unexpected response")
+        code = payload.get("code", 0)
+        if not isinstance(code, int) or code < 0:
+            raise RuntimeError("Binance testnet rejected the depth request")
         return payload
 
     def depth(self, symbol: str, limit: int = 20) -> dict:
-        if not symbol or limit < 5 or limit > 1000:
+        if not re.fullmatch(r"[A-Za-z0-9]{1,30}", symbol) or limit < 5 or limit > 1000:
             raise ValueError("symbol is required and limit must be between 5 and 1000")
         return self._get("/api/v3/depth", {"symbol": symbol.upper(), "limit": limit})
 
