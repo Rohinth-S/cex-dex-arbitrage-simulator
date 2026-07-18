@@ -3,6 +3,7 @@
 import argparse
 import csv
 import hashlib
+from io import StringIO
 import json
 from pathlib import Path
 
@@ -28,14 +29,15 @@ def _write(path: Path | None, payload: str) -> None:
 
 
 def _write_ledger(path: Path, rows: list[dict]) -> None:
-    if path.suffix not in {".csv", ".parquet"}:
+    if path.suffix.lower() not in {".csv", ".parquet"}:
         raise ValueError("ledger path must end in .csv or .parquet")
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.suffix == ".csv":
-        with path.open("w", encoding="utf-8", newline="") as stream:
-            writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
-            writer.writeheader()
-            writer.writerows(rows)
+    if path.suffix.lower() == ".csv":
+        stream = StringIO(newline="")
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+        write_text_atomic(path, stream.getvalue())
     else:
         with duckdb.connect(config={"threads": 1}) as db:
             db.register("ledger", pd.DataFrame(rows))
