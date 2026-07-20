@@ -6,6 +6,7 @@ import hashlib
 from io import StringIO
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from .artifacts import write_text_atomic
 
@@ -39,10 +40,13 @@ def _write_ledger(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
         write_text_atomic(path, stream.getvalue())
     else:
-        with duckdb.connect(config={"threads": 1}) as db:
-            db.register("ledger", pd.DataFrame(rows))
-            literal = path.resolve().as_posix().replace("'", "''")
-            db.execute(f"COPY ledger TO '{literal}' (FORMAT PARQUET)")
+        with TemporaryDirectory(prefix=".parquet-", dir=path.parent) as temporary:
+            staged = Path(temporary) / "ledger.parquet"
+            with duckdb.connect(config={"threads": 1}) as db:
+                db.register("ledger", pd.DataFrame(rows))
+                literal = staged.resolve().as_posix().replace("'", "''")
+                db.execute(f"COPY ledger TO '{literal}' (FORMAT PARQUET)")
+            staged.replace(path)
 
 
 def main() -> None:
