@@ -3,6 +3,7 @@
 from bisect import bisect_right
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from math import isfinite
 from typing import Protocol, TypeVar
 
 import numpy as np
@@ -30,6 +31,12 @@ class FillCost:
     hedge: float
     gas: float
     debit: float
+
+    def __post_init__(self) -> None:
+        values = (self.buy_price, self.sell_price, self.gross, self.cex_fee, self.dex_fee, self.hedge,
+                  self.gas, self.debit, self.net)
+        if not all(map(isfinite, values)):
+            raise ArithmeticError("execution economics overflowed, check price and size units")
 
     @property
     def net(self) -> float:

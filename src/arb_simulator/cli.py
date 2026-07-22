@@ -108,7 +108,7 @@ def main() -> None:
             result["producer"] = {"name": "cex-dex-arbitrage-simulator", "version": __version__, "format_version": 1}
         payload = json.dumps(result, indent=2, allow_nan=False) + "\n"
         _write(args.output, payload)
-    except (OSError, ValueError, RuntimeError) as exc:
+    except (OSError, ValueError, RuntimeError, ArithmeticError) as exc:
         parser.error(str(exc))
     print(payload, end="")
 
