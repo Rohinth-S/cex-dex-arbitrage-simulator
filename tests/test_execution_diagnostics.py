@@ -14,3 +14,16 @@ def test_order_book_rejects_fractional_update_and_insufficient_tiny_depth():
         normalize_order_book({**feed, "lastUpdateId": 0.5})
     with pytest.raises(ValueError, match="invalid asks"):
         normalize_order_book({**feed, "asks": [[None, 1]]})
+
+def test_execution_uses_market_age_caps_and_explains_edge_decay():
+    tape = tape_with_depth()
+    fast = ReplayConfig(cex_latency_ms=50, dex_latency_ms=100)
+    rows = replay_tape(tape, fast)
+    trade = next(row for row in rows if row["status"] == "filled")
+    assert trade["scheduled_cex_ms"] == trade["execution_book_ms"] == 50
+    assert trade["execution_dex_quote_age_ms"] == 100
+    assert trade["edge_decay_usd"] == pytest.approx(trade["spread_decay_usd"] + trade["cost_drift_usd"])
+    assert trade["fees_usd"] == pytest.approx(trade["cex_fees_usd"] + trade["dex_fees_usd"])
+    stale = ReplayConfig(cex_latency_ms=50, dex_latency_ms=100, dex_max_age_ms=90)
+    failure = next(row for row in replay_tape(tape, stale) if row["status"] == "failed_stale")
+    assert failure["gas_mark_source"] == "signal_dex"
