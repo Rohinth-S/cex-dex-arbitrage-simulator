@@ -27,3 +27,17 @@ def test_execution_uses_market_age_caps_and_explains_edge_decay():
     stale = ReplayConfig(cex_latency_ms=50, dex_latency_ms=100, dex_max_age_ms=90)
     failure = next(row for row in replay_tape(tape, stale) if row["status"] == "failed_stale")
     assert failure["gas_mark_source"] == "signal_dex"
+
+def test_atomic_ledger_roundtrip(tmp_path):
+    import csv
+    import duckdb
+    from arb_simulator.cli import _write_ledger
+
+    rows = replay_tape(tape_with_depth(), ReplayConfig(cex_latency_ms=50, dex_latency_ms=100))
+    csv_path, parquet_path = tmp_path / "run.CSV", tmp_path / "run.parquet"
+    _write_ledger(csv_path, rows)
+    _write_ledger(parquet_path, rows)
+    with csv_path.open(newline="", encoding="utf-8") as stream:
+        assert [row["status"] for row in csv.DictReader(stream)] == [row["status"] for row in rows]
+    with duckdb.connect() as conn:
+        assert conn.execute("SELECT count(*) FROM read_parquet(?)", [str(parquet_path)]).fetchone() == (len(rows),)
