@@ -41,3 +41,14 @@ def test_atomic_ledger_roundtrip(tmp_path):
         assert [row["status"] for row in csv.DictReader(stream)] == [row["status"] for row in rows]
     with duckdb.connect() as conn:
         assert conn.execute("SELECT count(*) FROM read_parquet(?)", [str(parquet_path)]).fetchone() == (len(rows),)
+
+def test_latency_study_keeps_inputs_and_other_assumptions_fixed():
+    from arb_simulator.sensitivity import compare_dex_latency
+
+    tape = tape_with_depth()
+    cfg = ReplayConfig(cex_latency_ms=50, dex_latency_ms=100)
+    result = compare_dex_latency(tape, cfg, [100, 0])
+    assert result[1]["net_pnl_usd"] == summarize_tape(tape, replay_tape(tape, cfg), cfg)["portfolio"]["net_pnl_usd"]
+    assert result[1]["dex_latency_ms"] == 100
+    with pytest.raises(ValueError, match="distinct"):
+        compare_dex_latency(tape, cfg, [0, 0])
