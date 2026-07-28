@@ -19,6 +19,91 @@ class Opportunity:
         if min(self.cex_fee, self.dex_fee, self.gas_usd, self.hedge_cost) < 0:
             raise ValueError("execution costs cannot be negative")
 
+
+@dataclass(frozen=True)
+class SizingResult:
+    """Deterministic result of sizing one arbitrage against a capital budget."""
+
+    size: float
+    net_pnl: float
+    break_even_size: float
+    capital_used: float
+
+
+def net_pnl_for_size(
+    opportunity: Opportunity,
+    size: float,
+    *,
+    latency_ms: float = 0.0,
+    slippage_bps: float = 0.0,
+    impact_bps_per_unit: float = 0.0,
+) -> float:
+    """Quote an opportunity with explicit depth and latency costs.
+
+    ``slippage_bps`` is a one-off marketable-order cost while
+    ``impact_bps_per_unit`` grows linearly with size to model consuming a
+    shallow order book.  Keeping this pure makes sizing reproducible and
+    suitable for a backtest before submitting to either venue.
+    """
+    if size <= 0 or latency_ms < 0 or slippage_bps < 0 or impact_bps_per_unit < 0:
+        raise ValueError("size and cost parameters must be non-negative (size > 0)")
+    gross = (opportunity.cex_bid - opportunity.dex_ask) * size
+    fees = opportunity.cex_bid * size * (opportunity.cex_fee + opportunity.hedge_cost)
+    fees += opportunity.dex_ask * size * opportunity.dex_fee
+    latency = (latency_ms / 1000.0) * 0.0008 * size * opportunity.cex_bid
+    slippage = (
+        (slippage_bps + impact_bps_per_unit * size) / 1e4
+        * size
+        * (opportunity.cex_bid + opportunity.dex_ask)
+        / 2
+    )
+    return gross - fees - opportunity.gas_usd - latency - slippage
+
+
+def size_opportunity(
+    opportunity: Opportunity,
+    capital_usd: float,
+    *,
+    max_size: float | None = None,
+    step: float = 0.01,
+    latency_ms: float = 80.0,
+    slippage_bps: float = 0.0,
+    impact_bps_per_unit: float = 5.0,
+) -> SizingResult:
+    """Choose the most profitable executable size under a capital budget.
+
+    The search is intentionally discrete: it mirrors exchange lot sizes and
+    avoids pretending the edge remains linear once depth is consumed.
+    """
+    if capital_usd <= 0 or step <= 0:
+        raise ValueError("capital_usd and step must be positive")
+    bound = capital_usd / opportunity.dex_ask
+    if max_size is not None:
+        if max_size <= 0:
+            raise ValueError("max_size must be positive")
+        bound = min(bound, max_size)
+    if bound <= 0:
+        return SizingResult(0.0, -opportunity.gas_usd, 0.0, 0.0)
+    # Include the exact bound even when it is not an integer number of lots.
+    candidates = np.unique(np.append(np.arange(step, bound + step / 2, step), bound))
+    pnls = np.array(
+        [
+            net_pnl_for_size(
+                opportunity,
+                float(size),
+                latency_ms=latency_ms,
+                slippage_bps=slippage_bps,
+                impact_bps_per_unit=impact_bps_per_unit,
+            )
+            for size in candidates
+        ]
+    )
+    idx = int(np.argmax(pnls))
+    profitable = np.flatnonzero(pnls > 0)
+    break_even = float(candidates[profitable[0]]) if profitable.size else 0.0
+    chosen = float(candidates[idx]) if pnls[idx] > 0 else 0.0
+    return SizingResult(chosen, float(pnls[idx] if chosen else -opportunity.gas_usd), break_even, chosen * opportunity.dex_ask)
+
 def execute(o: Opportunity, latency_ms: float = 80, fail_prob: float = .05, seed: int = 9) -> dict:
     if latency_ms < 0 or not 0 <= fail_prob <= 1:
         raise ValueError("latency must be non-negative and fail_prob must be between 0 and 1")
