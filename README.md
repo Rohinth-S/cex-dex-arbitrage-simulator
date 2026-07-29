@@ -80,3 +80,15 @@ use retrospectively assigned milestones from 2026-06-01 through 2026-07-31,
 the project period listed in the résumé. Each commit records its assigned date
 in the Project-Milestone trailer and its original committer timestamp in
 the Original-Commit-Date trailer. Use git log --format=fuller to inspect the dates.
+
+## Inspect and compare execution assumptions
+
+Set `cex_max_age_ms` and `dex_max_age_ms` to override the common freshness
+limit. Ledger rows show scheduled execution clocks, realized quote ages, and
+per-market capital requirements. Filled trades split edge decay into spread
+decay and cost drift, while failed rows record which DEX observation priced gas.
+
+Use `--latency-study 0 80 160` to compare fixed-tape sensitivities. Each study
+reuses the same captured data, capital, fee, and quote-age assumptions. The
+standalone ledger uses the base configuration. Coverage and direction metrics
+are included in the JSON report.
