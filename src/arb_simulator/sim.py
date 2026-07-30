@@ -85,7 +85,13 @@ def size_opportunity(
     if bound <= 0:
         return SizingResult(0.0, -opportunity.gas_usd, 0.0, 0.0)
     # Include the exact bound even when it is not an integer number of lots.
-    candidates = np.unique(np.append(np.arange(step, bound + step / 2, step), bound))
+    # A coarse cap keeps a large capital limit from allocating millions of
+    # candidates while still retaining the shape of the depth-impact curve.
+    point_count = int(np.ceil(bound / step))
+    if point_count > 100_000:
+        candidates = np.linspace(step, bound, 100_000)
+    else:
+        candidates = np.unique(np.append(np.arange(step, bound + step / 2, step), bound))
     pnls = np.array(
         [
             net_pnl_for_size(
