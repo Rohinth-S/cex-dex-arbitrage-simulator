@@ -28,6 +28,7 @@ jobs:
           python -m pip install "${wheels[0]}[test]"
       - run: python -m pytest -q
       - run: cex_dex_arbitrage_simulator --output reports/ci.json --ledger reports/ci-ledger.parquet
+      - run: cex_dex_arbitrage_simulator --input examples/single-market.json --latency-study 0 100 --output reports/sensitivity.json
       - uses: actions/upload-artifact@v4
         with:
           name: demo-${{ matrix.os }}-${{ matrix.python }}

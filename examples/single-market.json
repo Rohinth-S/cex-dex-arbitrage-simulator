@@ -1,0 +1,10 @@
+{
+  "books": [
+    {"market":"ETH-USD","time_ms":0,"bids":[[118,0.5],[117,2]],"asks":[[120,2]]},
+    {"market":"ETH-USD","time_ms":50,"bids":[[117,0.2]],"asks":[[119,2]]}
+  ],
+  "dex_quotes": [
+    {"market":"ETH-USD","time_ms":0,"bid":99,"ask":100,"max_qty":2,"gas_usd":2}
+  ],
+  "observed_through_ms": 250
+}
