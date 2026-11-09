@@ -13,7 +13,7 @@ def test_size_accounts_for_fixed_gas_and_depth_impact():
     result = size_opportunity(o, capital_usd=1000, max_size=5, impact_bps_per_unit=5, step=.1)
     assert result.size > 0
     assert result.capital_used <= 1000
-    assert result.net_pnl == pytest.approx(net_pnl_for_size(o, result.size, impact_bps_per_unit=5))
+    assert result.net_pnl == pytest.approx(net_pnl_for_size(o, result.size, latency_ms=80, impact_bps_per_unit=5))
 
 def test_costs_can_turn_a_thin_edge_negative():
     o = Opportunity(100.01, 100.0, 1.0, gas_usd=20)
