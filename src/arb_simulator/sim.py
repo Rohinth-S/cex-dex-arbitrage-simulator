@@ -91,7 +91,9 @@ def size_opportunity(
     if point_count > 100_000:
         candidates = np.linspace(step, bound, 100_000)
     else:
-        candidates = np.unique(np.append(np.arange(step, bound + step / 2, step), bound))
+        lot_count = int(np.floor(bound / step))
+        candidates = np.unique(np.append(np.arange(1, lot_count + 1) * step, bound))
+        candidates = candidates[candidates <= bound]
     pnls = np.array(
         [
             net_pnl_for_size(

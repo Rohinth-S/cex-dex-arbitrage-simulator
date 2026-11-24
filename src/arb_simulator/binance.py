@@ -4,6 +4,7 @@ import json
 import os
 from dataclasses import dataclass
 from collections import defaultdict
+from math import isfinite
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -31,7 +32,7 @@ class NormalizedOrderBook:
         return self.asks[0].price
 
     def vwap(self, side: str, quantity: float) -> float:
-        if quantity <= 0:
+        if not isfinite(quantity) or quantity <= 0:
             raise ValueError("quantity must be positive")
         levels = self.asks if side.lower() == "buy" else self.bids if side.lower() == "sell" else ()
         if not levels:
@@ -65,8 +66,8 @@ def normalize_order_book(payload: dict, depth: int | None = None) -> NormalizedO
             if not isinstance(level, (list, tuple)) or len(level) != 2:
                 raise ValueError(f"invalid {side} level")
             price, quantity = float(level[0]), float(level[1])
-            if price <= 0 or quantity <= 0:
-                raise ValueError("book prices and quantities must be positive")
+            if not all(isfinite(value) and value > 0 for value in (price, quantity)):
+                raise ValueError("book prices and quantities must be finite and positive")
             aggregated[price] += quantity
         values = sorted(aggregated.items(), key=lambda item: item[0], reverse=side == "bids")
         if depth is not None:
