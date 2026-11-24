@@ -1,49 +1,74 @@
-# CEX-DEX Cross-Venue Arbitrage & Execution Simulator
+# CEX–DEX Cross-Venue Arbitrage & Execution Simulator
 
-A latency-aware replay engine that joins a CEX quote with a DEX execution quote and computes executable, cost-adjusted PnL. Fees, gas, hedge cost, latency slippage, and failed fills are modeled explicitly.
+Replay cross-venue spreads from timestamped CEX books and DEX quotes. Evaluate the expected signal separately from the observed execution outcome, including latency, depth, fees, hedging and paid gas.
+
+## Run a replay
+
+Requires Python 3.11 or later.
+
+```bash
+python -m pip install -e '.[test]'
+cex_dex_arbitrage_simulator --write-tape reports/demo-tape.json \
+  --ledger reports/demo-ledger.parquet --output reports/demo.json
+cex_dex_arbitrage_simulator --input reports/demo-tape.json \
+  --ledger reports/replay.csv --output reports/replay.json
+python -m pytest -q
+```
+
+Supply `--config data/config.json` to vary position size, capital, latency, quote age, fee budgets, hedge costs and the cost of a failed attempt. With Docker, build the image and pass the same options to the container entry point.
 
 ## Architecture
+
 ```mermaid
 flowchart LR
- Q[CEX order book] --> J[Opportunity join]
- D[DEX swap quote] --> J
- J --> E[Latency + fill model]
- E --> C[Fee/gas/hedge costs]
- C --> R[Trade ledger]
- R --> M[PNL, fill rate, drawdown]
+    A["CEX depth and trade tape"] --> C["Venue-normalized, timestamped observations"]
+    B["DEX bid/ask, capacity and gas"] --> C
+    C --> D["As-of join at signal time"]
+    D --> E["Depth VWAP and both directions"]
+    E --> F["Risk, capital and edge filters"]
+    F --> G["As-of joins at each leg's execution time"]
+    G --> H["Fill, failure, or censored decision"]
+    H --> I["CSV / Parquet ledger and P&L report"]
 ```
 
-## Structural overview
-`src/arb_simulator/sim.py` contains quote joining, execution-cost modeling, and aggregation; `cli.py` runs a replay; `tests/` verifies failure and metric behavior.
+| Component | Responsibility |
+|---|---|
+| `tape.py` | Validates market pairs, unique timestamps per stream, quote capacity, and optional market observation end time. |
+| `binance.py` | Normalizes sorted book levels, aggregates duplicate prices, checks crossed books and computes executable VWAP. |
+| `replay.py` | Builds causally available signal quotes, sizes by a fixed research quantity, rechecks depth at modeled execution, and records decisions. |
+| `cli.py` | Imports or exports tapes, captures Spot Testnet depth and writes JSON, CSV or Parquet. |
 
-## Workflow
-1. Create synchronized CEX/DEX quotes.
-2. Reject opportunities whose gross edge cannot cover costs.
-3. Apply latency-dependent slippage and stochastic fill failure.
-4. Record a ledger row for every attempted trade.
-5. Aggregate net PnL, fill rate, Sharpe-like score, and max drawdown.
+## Tape and timing contract
 
-## Why this approach
-A backtest that ignores failed fills or gas only measures theoretical spread. The ledger is intentionally loss-aware so a positive gross edge can still produce negative net performance.
+Each row contains `market` and `time_ms`. Use one common clock across venues and one common USD-equivalent quote unit per market.
 
-## Run
+| Stream | Required fields |
+|---|---|
+| `books` | `bids` and `asks` as `[price, quantity]` levels. An optional `update_id` tracks source sequence. |
+| `dex_quotes` | `bid`, `ask`, `max_qty`, `gas_usd`. An optional `impact_bps_per_unit` models quote movement with order size. |
+| `cex_trades` | Optional `price` and `quantity` rows for observed trade count and notional by market. |
+
+The decision uses only snapshots at or before its timestamp. The simulated fill uses the most recent eligible quote observed by each leg's own execution timestamp and rejects quotes older than `max_quote_age_ms`. An attempt is censored when either execution timestamp exceeds `observed_through_ms` or the common observed window. Captured trades provide diagnostics in the report.
+
+## Execution and risk accounting
+
+- Each simulated direction consumes full CEX depth as VWAP and uses the DEX capacity/impact model. The capital budget is split by market. A market has one pending attempt at a time.
+- Fill P&L is sell proceeds less buy costs, execution fees, hedge fees and gas. A modeled failed attempt pays the configured fraction of DEX gas. Edge decay is expected signal P&L minus realized attempt P&L.
+- Fill rate uses observed attempts as its denominator. Drawdown includes the starting equity point. The Sharpe-like figure uses irregular, per-attempt outcomes and has no annualization.
+- The simulator models fill-or-kill execution with prefunded inventory and an explicit hedge cost. Real two-venue operations can introduce legging, settlement, queueing and funding risk beyond that model.
+
+## Capture a real order-book snapshot
+
+The read-only capture uses the Binance Spot Testnet depth endpoint and writes a normalized `books` element. The timestamp is the local receipt time. Capture quotes with a synchronized clock and preserve the original feed metadata when assembling a historical tape.
+
 ```bash
-pip install -e .
-python -m arb_simulator.cli --output reports/arbitrage-summary.json
-pytest -q
+cex_dex_arbitrage_simulator --capture-book ETHUSDT --market ETH-USDT --output reports/binance-book.json
 ```
 
-The CLI writes a JSON summary when `--output` is provided. A production adapter should normalize CEX order-book snapshots and DEX quote responses into `Opportunity` records.
+[Binance Spot Testnet](https://testnet.binance.vision/) · [Binance market-data endpoints](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints)
 
-## Environment
+## Reproduced demo results
 
-`BinanceTestnetClient` reads `BINANCE_TESTNET_API_KEY` and `BINANCE_TESTNET_BASE_URL` when present. Public depth endpoints are used by default; authenticated trading is deliberately outside this read-only research adapter.
+The seeded two-market tape generates 22 observed attempts and 19 fills. It realizes −$122.40 after costs from the default assumptions, with a maximum drawdown of $125.89.
 
-## Live adapter boundary
-`arb_simulator.binance.BinanceTestnetClient` provides a read-only Binance Spot Testnet depth adapter. Convert its best bid/ask into an `Opportunity` alongside a DEX quote; no API key is needed for public depth in most environments.
-
-### Credential-dependent blockers
-Live cross-venue replay requires Binance testnet reachability and a DEX quote adapter. Order-book queue position, private order flow, and settlement confirmation are outside this offline core.
-
-## Limitations
-The fixture does not model private order flow, exchange queue position, or chain reorgs. Add venue adapters and historical snapshots before production use.
+![Synthetic signal P&L, realized P&L and cumulative execution curve](docs/demo-results.png)
