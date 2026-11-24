@@ -1,12 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cex-dex-arbitrage-simulator"
-version = "0.1.0"
-description = "Reproducible quantitative research system"
+version = "0.2.0"
+description = "Chronological cross-venue fill and execution cost simulator"
 requires-python = ">=3.11"
-dependencies = [
-    "numpy>=1.26",
-    "pandas>=2.1",
-]
+dependencies = ["duckdb>=1.1", "numpy>=1.26", "pandas>=2.1", "pydantic>=2.9"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
 
 [project.scripts]
 cex_dex_arbitrage_simulator = "arb_simulator.cli:main"
